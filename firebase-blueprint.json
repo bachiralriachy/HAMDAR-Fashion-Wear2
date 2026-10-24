@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Product catalog item in HAMDAR Fashion Wear store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "enum": ["men", "women", "shoes", "unisex"] },
+        "category": { "type": "string", "maxLength": 100 },
+        "subcategory": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "images": { "type": "array" },
+        "sizes": { "type": "array" },
+        "colors": { "type": "array" },
+        "stock": { "type": "number" },
+        "isFeatured": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "isExample": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "department", "category", "price", "stock", "isActive"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order record with items, address, and status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "orderNumber": { "type": "string", "maxLength": 64 },
+        "customerName": { "type": "string", "maxLength": 150 },
+        "customerPhone": { "type": "string", "maxLength": 50 },
+        "deliveryAddress": { "type": "string", "maxLength": 300 },
+        "city": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "items": { "type": "array" },
+        "department": { "type": "string", "enum": ["men", "women", "mixed"] },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] },
+        "internalNotes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" },
+        "channel": { "type": "string", "enum": ["website", "whatsapp"] }
+      },
+      "required": ["id", "orderNumber", "customerName", "customerPhone", "deliveryAddress", "totalAmount", "status"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global website configuration, department contacts, and banners",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string", "maxLength": 100 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "promoBannerText": { "type": "string", "maxLength": 300 },
+        "promoBannerActive": { "type": "boolean" },
+        "heroTitle": { "type": "string", "maxLength": 200 },
+        "heroSubtitle": { "type": "string", "maxLength": 500 },
+        "heroTag": { "type": "string", "maxLength": 100 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "currencySymbol": { "type": "string", "maxLength": 5 },
+        "deliveryFee": { "type": "number" },
+        "freeDeliveryThreshold": { "type": "number" },
+        "menFacebookUrl": { "type": "string", "maxLength": 500 },
+        "menWhatsAppNumber": { "type": "string", "maxLength": 50 },
+        "womenFacebookUrl": { "type": "string", "maxLength": 500 },
+        "womenWhatsAppNumber": { "type": "string", "maxLength": 50 },
+        "heroImageUrl": { "type": "string", "maxLength": 500 },
+        "logoText": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["storeName", "heroTitle", "menWhatsAppNumber", "womenWhatsAppNumber"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin authorization entry",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["admin", "superadmin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Public catalog of products. Public readable, Admin writable."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders. Customer writable on create, Admin readable and manageable."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global store settings. Public readable, Admin writable."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Authorized admin users."
+    }
+  }
+}

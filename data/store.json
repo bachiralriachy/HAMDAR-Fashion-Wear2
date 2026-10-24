@@ -1,0 +1,401 @@
+{
+  "products": [
+    {
+      "id": "hmd-001",
+      "name": "Striped Knit Top",
+      "department": "women",
+      "category": "Clothing",
+      "subcategory": "Knitwear",
+      "description": "Premium cotton-blend long-sleeve knit sweater featuring chic nautical horizontal stripes, relaxed crewneck neckline, and ribbed cuffs. Soft, breathable, and effortlessly stylish.",
+      "price": 29,
+      "originalPrice": 38,
+      "salePrice": 29,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg",
+        "/src/assets/images/hero_fashion_models_1792786507434.jpg"
+      ],
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Black/White Stripe",
+        "Navy/Cream Stripe"
+      ],
+      "stock": 24,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-18T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:30:30.656Z"
+    },
+    {
+      "id": "hmd-002",
+      "name": "Essential Heavyweight Hoodie",
+      "department": "men",
+      "category": "Clothing",
+      "subcategory": "Hoodies & Sweats",
+      "description": "Oversized minimalist hoodie crafted from 420 GSM brushed fleece cotton. Features a double-layered structured hood with tonal drawstrings and kangaroo pouch pocket.",
+      "price": 39,
+      "originalPrice": 48,
+      "salePrice": 39,
+      "images": [
+        "/src/assets/images/product_hoodie_beige_1792786509010.jpg",
+        "/src/assets/images/hero_fashion_models_1792786507434.jpg"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Warm Beige",
+        "Midnight Black",
+        "Heather Grey"
+      ],
+      "stock": 35,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-19T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-003",
+      "name": "Retro Court Lifestyle Sneakers",
+      "department": "men",
+      "category": "Shoes",
+      "subcategory": "Men's Shoes",
+      "description": "Low-profile retro court sneakers engineered with premium tumbled leather uppers, contrast swoosh accents, cushioned foam midsole, and vintage gum rubber outsole.",
+      "price": 69,
+      "originalPrice": 85,
+      "salePrice": 69,
+      "images": [
+        "/src/assets/images/product_sneakers_retro_1792786510224.jpg"
+      ],
+      "sizes": [
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45"
+      ],
+      "colors": [
+        "Grey/White",
+        "Triple White",
+        "Black/Gum"
+      ],
+      "stock": 18,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-17T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-004",
+      "name": "Heather Ribbed Knit Set",
+      "department": "women",
+      "category": "Clothing",
+      "subcategory": "Co-ord Sets",
+      "description": "Ultra-comfortable two-piece matching lounge set with a relaxed quarter-zip top and wide-leg drawstring knit trousers. Perfect for cozy days and effortless casual outings.",
+      "price": 54,
+      "originalPrice": 65,
+      "salePrice": 54,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Heather Grey",
+        "Oatmeal Beige"
+      ],
+      "stock": 14,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-20T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-005",
+      "name": "Emerald Green Lounge Set",
+      "department": "women",
+      "category": "Clothing",
+      "subcategory": "Co-ord Sets",
+      "description": "Luxury knit two-piece set in a deep botanical emerald tone. Breathable ribbed knit fabric offering supreme comfort with a contemporary silhouette.",
+      "price": 54,
+      "originalPrice": 65,
+      "salePrice": 54,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Forest Green",
+        "Olive"
+      ],
+      "stock": 8,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-20T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-006",
+      "name": "Burgundy Velvet Knit Set",
+      "department": "women",
+      "category": "Clothing",
+      "subcategory": "Co-ord Sets",
+      "description": "Rich burgundy two-piece co-ord set with elastic waist trousers and tailored lounge top. Elegant, warming, and designed for versatile styling.",
+      "price": 54,
+      "originalPrice": 65,
+      "salePrice": 54,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Burgundy",
+        "Wine"
+      ],
+      "stock": 12,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-21T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-007",
+      "name": "Quarter-Zip Athletic Top",
+      "department": "men",
+      "category": "Clothing",
+      "subcategory": "Jackets & Tops",
+      "description": "Modern mock-neck quarter-zip pullover in technical cotton stretch. Minimalist chest branding, matte zip hardware, and clean banded cuffs.",
+      "price": 45,
+      "originalPrice": 55,
+      "salePrice": 45,
+      "images": [
+        "/src/assets/images/product_hoodie_beige_1792786509010.jpg"
+      ],
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Navy Blue",
+        "Dark Charcoal"
+      ],
+      "stock": 22,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-21T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-008",
+      "name": "Tailored Smart Wool-Blend Trousers",
+      "department": "men",
+      "category": "Clothing",
+      "subcategory": "Pants & Trousers",
+      "description": "Slim-tapered smart trousers with subtle front pleats and concealed elastic comfort waistband. Dressed up with loafers or down with sneakers.",
+      "price": 48,
+      "originalPrice": 60,
+      "salePrice": 48,
+      "images": [
+        "/src/assets/images/hero_fashion_models_1792786507434.jpg"
+      ],
+      "sizes": [
+        "30",
+        "32",
+        "34",
+        "36"
+      ],
+      "colors": [
+        "Charcoal Grey",
+        "Dark Navy",
+        "Desert Tan"
+      ],
+      "stock": 16,
+      "isFeatured": false,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-16T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-009",
+      "name": "Chic Platform Classic Sneakers",
+      "department": "women",
+      "category": "Shoes",
+      "subcategory": "Women's Shoes",
+      "description": "Elevated platform sneakers with clean white leather finish, cushioned footbed, and tonal trim. Ideal for pairing with knit dresses and casual trousers.",
+      "price": 64,
+      "originalPrice": 78,
+      "salePrice": 64,
+      "images": [
+        "/src/assets/images/product_sneakers_retro_1792786510224.jpg"
+      ],
+      "sizes": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41"
+      ],
+      "colors": [
+        "White/Cream",
+        "Triple White"
+      ],
+      "stock": 19,
+      "isFeatured": true,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-18T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-010",
+      "name": "Classic Belted Trench Coat",
+      "department": "women",
+      "category": "Clothing",
+      "subcategory": "Jackets & Coats",
+      "description": "Iconic double-breasted long trench coat with storm flaps, adjustable wrist straps, and tortoiseshell button details. Water-resistant and timeless.",
+      "price": 92,
+      "originalPrice": 110,
+      "salePrice": 92,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Honey Camel",
+        "Black"
+      ],
+      "stock": 6,
+      "isFeatured": false,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-15T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-011",
+      "name": "Urban Runner Monochrome Sneakers",
+      "department": "men",
+      "category": "Shoes",
+      "subcategory": "Men's Shoes",
+      "description": "Lightweight technical lifestyle runner with engineered mesh breathability, reinforced heel cup, and responsive shock-absorbing sole.",
+      "price": 72,
+      "originalPrice": 89,
+      "salePrice": 72,
+      "images": [
+        "/src/assets/images/product_sneakers_retro_1792786510224.jpg"
+      ],
+      "sizes": [
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45"
+      ],
+      "colors": [
+        "Stealth Black",
+        "Smoke Grey"
+      ],
+      "stock": 15,
+      "isFeatured": false,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-14T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    },
+    {
+      "id": "hmd-012",
+      "name": "Modern Leather Chelsea Booties",
+      "department": "women",
+      "category": "Shoes",
+      "subcategory": "Women's Shoes",
+      "description": "Sleek low-heel Chelsea booties in supple black leather with elastic side gores and pull tab. Timeless comfort for daily wear.",
+      "price": 85,
+      "originalPrice": 98,
+      "salePrice": 85,
+      "images": [
+        "/src/assets/images/product_striped_knit_top_1792786508889.jpg"
+      ],
+      "sizes": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40"
+      ],
+      "colors": [
+        "Noir Black",
+        "Dark Espresso"
+      ],
+      "stock": 10,
+      "isFeatured": false,
+      "isActive": true,
+      "isExample": true,
+      "createdAt": "2026-10-13T21:10:22.047Z",
+      "updatedAt": "2026-10-23T21:10:22.047Z"
+    }
+  ],
+  "settings": {
+    "storeName": "HAMDAR Fashion Wear",
+    "tagline": "Modern Looks for a Better You",
+    "promoBannerText": "🚚 Express Delivery Across Lebanon • WhatsApp Orders Only",
+    "promoBannerActive": false,
+    "showHero": false,
+    "showCategoryBanners": false,
+    "heroTitle": "Modern Looks for a Better You",
+    "heroSubtitle": "Premium clothing for men and women. Comfort, quality and timeless style.",
+    "heroTag": "STYLE FOR EVERYDAY",
+    "currency": "USD",
+    "currencySymbol": "$",
+    "deliveryFee": 3,
+    "freeDeliveryThreshold": 75,
+    "menFacebookUrl": "https://www.facebook.com/share/1E7SjfVSzt/?mibextid=wwXIfr",
+    "menWhatsAppNumber": "+961 76 320 279",
+    "womenFacebookUrl": "https://www.facebook.com/share/1FzvXxuDSb/?mibextid=wwXIfr",
+    "womenWhatsAppNumber": "+961 81 612 154",
+    "heroImageUrl": "/src/assets/images/hero_fashion_models_1792786507434.jpg",
+    "logoText": "HAMDAR"
+  },
+  "auth": {
+    "pinSalt": "2d182e6f50ce567c167c012fe1ef1955",
+    "pinHash": "02a7777d38be49adb6245663576073f741fdbe15de64f261600ce658ef148a4e0ab62df886ea8cef90e826ec7b4c90375fe023cc4db82461eb595542e88ee3f9",
+    "passwordSalt": "f7aa316c373d9f9f109b24d2fe57ae99",
+    "passwordHash": "4e5e4f4acc625dca5b507ef3ecbb043b3dd934617a08163d6fb8cfd2f7d9687fc42e4b8c34c73faec9771d88eee3a2da9bad0756cfeb9bdbeb2170f29b6db48a",
+    "isInitialSetup": false
+  }
+}

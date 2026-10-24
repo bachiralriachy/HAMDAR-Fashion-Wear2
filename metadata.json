@@ -1,0 +1,6 @@
+{
+  "name": "HAMDAR Fashion Wear",
+  "description": "Complete modern fashion e-commerce storefront and admin management platform with separate Men's and Women's departments, WhatsApp order dispatch, inventory tracking, and secure PIN dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
