@@ -37,12 +37,10 @@ try {
 // Serve public uploads statically
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// In-memory active sessions and rate-limiting
-interface AdminSession {
-  token: string;
-  expiresAt: number;
-}
-const activeSessions = new Map<string, AdminSession>();
+// ==========================================
+// STATELESS CRYPTOGRAPHIC ADMIN SESSION TOKEN
+// Compatible with Vercel Serverless & Multi-Instance Environments
+// ==========================================
 
 interface RateLimitTracker {
   attempts: number;
@@ -95,31 +93,86 @@ function resetPinRateLimit(ip: string) {
   pinRateLimits.delete(ip);
 }
 
+function getSessionSigningSecret(): string {
+  const auth = store.getAuth();
+  const envSecret = process.env.ADMIN_SESSION_SECRET || process.env.SESSION_SECRET || '';
+  return crypto
+    .createHash('sha256')
+    .update(`${envSecret}:${auth.pinSalt}:${auth.pinHash}:hamdar_session_v1`)
+    .digest('hex');
+}
+
+export function generateAdminSessionToken(durationMs: number = 7 * 24 * 60 * 60 * 1000): string {
+  const payload = {
+    role: 'admin',
+    iat: Date.now(),
+    exp: Date.now() + durationMs,
+    nonce: crypto.randomBytes(16).toString('hex')
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const secret = getSessionSigningSecret();
+  const signature = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${signature}`;
+}
+
+export function verifyAdminSessionToken(token: string): { valid: boolean; error?: string } {
+  if (!token || typeof token !== 'string') {
+    return { valid: false, error: 'Unauthorized: Admin authentication required.' };
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Session format invalid. Please re-enter your PIN.' };
+  }
+
+  const [payloadB64, signature] = parts;
+  const secret = getSessionSigningSecret();
+  const expectedSignature = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
+
+  try {
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return { valid: false, error: 'Session invalid or tampered with. Please re-enter your PIN.' };
+    }
+
+    const jsonStr = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+    const payload = JSON.parse(jsonStr);
+
+    if (payload.role !== 'admin') {
+      return { valid: false, error: 'Unauthorized role.' };
+    }
+
+    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) {
+      return { valid: false, error: 'Session expired. Please re-enter your PIN.' };
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: false, error: 'Session invalid. Please re-enter your PIN.' };
+  }
+}
+
 // Admin Authentication Middleware
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : req.headers['x-admin-token'];
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : (req.headers['x-admin-token'] as string | undefined)?.trim();
 
-  if (!token || typeof token !== 'string') {
+  if (!token) {
     res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
     return;
   }
 
-  const session = activeSessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    if (session) activeSessions.delete(token);
-    res.status(401).json({ error: 'Session expired or invalid. Please re-enter your PIN.' });
+  const verification = verifyAdminSessionToken(token);
+  if (!verification.valid) {
+    res.status(401).json({ error: verification.error || 'Session expired or invalid. Please re-enter your PIN.' });
     return;
   }
 
   next();
-}
-
-function createAdminSession(): string {
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-  activeSessions.set(token, { token, expiresAt });
-  return token;
 }
 
 // ==========================================
@@ -291,7 +344,7 @@ apiRouter.post('/admin/verify-pin', (req: Request, res: Response) => {
 
   // PIN verified successfully
   resetPinRateLimit(ip);
-  const token = createAdminSession();
+  const token = generateAdminSessionToken();
   const auth = store.getAuth();
 
   res.json({
@@ -315,7 +368,7 @@ apiRouter.post('/admin/login', (req: Request, res: Response) => {
     return;
   }
 
-  const token = createAdminSession();
+  const token = generateAdminSessionToken();
   const auth = store.getAuth();
   res.json({
     success: true,
@@ -360,7 +413,8 @@ apiRouter.post('/admin/change-pin', requireAdmin, (req: Request, res: Response) 
     }
 
     store.updatePin(newPin);
-    res.json({ success: true, message: 'Admin PIN updated successfully' });
+    const token = generateAdminSessionToken();
+    res.json({ success: true, message: 'Admin PIN updated successfully', token });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to update PIN' });
   }
@@ -393,7 +447,8 @@ apiRouter.post('/admin/change-password', requireAdmin, (req: Request, res: Respo
     }
 
     store.updatePassword(newPassword);
-    res.json({ success: true, message: 'Admin password updated successfully' });
+    const token = generateAdminSessionToken();
+    res.json({ success: true, message: 'Admin password updated successfully', token });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to update password' });
   }
@@ -437,14 +492,13 @@ apiRouter.post('/upload', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-// API 404 Handler - returns JSON, never HTML
-apiRouter.all('*', (req: Request, res: Response) => {
+// Mount API router ONLY under /api prefix
+app.use('/api', apiRouter);
+
+// Missing /api/* 404 handler - only applies to /api requests, never root or SPA pages
+app.use('/api', (req: Request, res: Response) => {
   res.status(404).json({ error: `API route ${req.method} ${req.originalUrl || req.url} not found` });
 });
-
-// Register apiRouter under both /api and root (to handle cases where Vercel rewrites strip /api)
-app.use('/api', apiRouter);
-app.use(apiRouter);
 
 // Global JSON error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

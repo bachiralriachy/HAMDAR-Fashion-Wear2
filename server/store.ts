@@ -429,16 +429,33 @@ class StoreManager {
   }
 
   private saveDataDirect(data: StoreData) {
-    const { writeDir, writeFile } = this.getStoragePaths();
+    let saved = false;
+    // 1. Try writing directly to repository data file (works in local dev, AI Studio, and writable environments)
     try {
-      if (!fs.existsSync(writeDir)) {
-        fs.mkdirSync(writeDir, { recursive: true });
+      if (!fs.existsSync(REPO_DATA_DIR)) {
+        fs.mkdirSync(REPO_DATA_DIR, { recursive: true });
       }
-      const tempFile = `${writeFile}.tmp.${Date.now()}`;
+      const tempFile = `${REPO_DATA_FILE}.tmp.${Date.now()}`;
       fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-      fs.renameSync(tempFile, writeFile);
+      fs.renameSync(tempFile, REPO_DATA_FILE);
+      saved = true;
+    } catch {
+      // Read-only filesystem in serverless environments (e.g. AWS Lambda /var/task)
+    }
+
+    // 2. Also write to TMP_DATA_FILE for serverless environments
+    try {
+      if (!fs.existsSync(TMP_DATA_DIR)) {
+        fs.mkdirSync(TMP_DATA_DIR, { recursive: true });
+      }
+      const tempFile = `${TMP_DATA_FILE}.tmp.${Date.now()}`;
+      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+      fs.renameSync(tempFile, TMP_DATA_FILE);
+      saved = true;
     } catch (err) {
-      console.warn('Could not persist store data to disk (running with in-memory state):', err);
+      if (!saved) {
+        console.warn('Could not persist store data to disk (running in-memory):', err);
+      }
     }
   }
 

@@ -252,6 +252,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         setPinMessage({ text: data?.error || `Failed to change PIN (${res.status})`, error: true });
       } else {
         setPinMessage({ text: 'PIN successfully changed! Please remember your new PIN.', error: false });
+        if (data?.token) {
+          localStorage.setItem('hamdar_admin_token', data.token);
+        }
         setCurrentPin('');
         setNewPin('');
         setConfirmPin('');
@@ -289,6 +292,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         setPasswordMessage({ text: data?.error || `Failed to change password (${res.status})`, error: true });
       } else {
         setPasswordMessage({ text: 'Password successfully updated!', error: false });
+        if (data?.token) {
+          localStorage.setItem('hamdar_admin_token', data.token);
+        }
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
