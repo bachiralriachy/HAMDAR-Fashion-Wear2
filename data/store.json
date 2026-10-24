@@ -397,5 +397,17 @@
     "passwordSalt": "f7aa316c373d9f9f109b24d2fe57ae99",
     "passwordHash": "4e5e4f4acc625dca5b507ef3ecbb043b3dd934617a08163d6fb8cfd2f7d9687fc42e4b8c34c73faec9771d88eee3a2da9bad0756cfeb9bdbeb2170f29b6db48a",
     "isInitialSetup": false
+  },
+  "images": {
+    "test_photo_123.jpg": {
+      "mimeType": "image/jpeg",
+      "data": "RkFLRV9KUEVHX0lNQUdFX0JJTkFSWV9EQVRBX1RFU1RfMTIzNDU2",
+      "createdAt": "2026-10-24T16:26:04.011Z"
+    },
+    "test_pixelpng_1792859172167.png": {
+      "mimeType": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "createdAt": "2026-10-24T16:26:12.167Z"
+    }
   }
 }

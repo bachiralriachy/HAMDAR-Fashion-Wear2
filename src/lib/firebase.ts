@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
@@ -12,6 +13,28 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Firebase Storage
+export const storage = getStorage(app);
+
+export async function uploadImageToFirebase(file: File): Promise<{ url: string; error?: string }> {
+  try {
+    const timestamp = Date.now();
+    const cleanName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const storageRef = ref(storage, `products/${timestamp}_${cleanName}`);
+
+    const snapshot = await uploadBytes(storageRef, file, {
+      contentType: file.type || 'image/jpeg',
+    });
+
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return { url: downloadURL };
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    console.warn('Firebase Storage upload failed:', errMsg);
+    return { url: '', error: errMsg };
+  }
+}
 
 // Error Handling conforming to Firebase Skill guidelines
 export enum OperationType {

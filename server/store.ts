@@ -21,6 +21,7 @@ export interface StoreData {
   products: Product[];
   settings: SiteSettings;
   auth: AdminAuth;
+  images?: Record<string, { mimeType: string; data: string; createdAt: string }>;
 }
 
 // Password / PIN hashing helpers
@@ -600,6 +601,24 @@ class StoreManager {
       lowStockCount,
       totalStockUnits
     };
+  }
+
+  // Persistent Image Storage
+  public saveImage(id: string, mimeType: string, base64Data: string): string {
+    if (!this.data.images) {
+      this.data.images = {};
+    }
+    this.data.images[id] = {
+      mimeType,
+      data: base64Data,
+      createdAt: new Date().toISOString()
+    };
+    this.persist();
+    return id;
+  }
+
+  public getImage(id: string): { mimeType: string; data: string; createdAt: string } | undefined {
+    return this.data.images?.[id];
   }
 }
 

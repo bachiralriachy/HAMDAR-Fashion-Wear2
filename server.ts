@@ -475,20 +475,53 @@ apiRouter.post('/upload', requireAdmin, (req: Request, res: Response) => {
 
     const safeName = (filename ? filename.replace(/[^a-zA-Z0-9_-]/g, '') : 'img') + `_${Date.now()}.${ext}`;
 
+    // 1. Save to persistent store so it is available across all serverless function instances
+    store.saveImage(safeName, mimeType, base64Data);
+
+    // 2. Also try writing to uploads directory on disk if writable
     try {
       if (!fs.existsSync(UPLOADS_DIR)) {
         fs.mkdirSync(UPLOADS_DIR, { recursive: true });
       }
       const filePath = path.join(UPLOADS_DIR, safeName);
       fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
-      const publicUrl = `/uploads/${safeName}`;
-      res.json({ url: publicUrl, success: true });
     } catch {
-      // In serverless environments where local file system writes may be restricted, return dataUrl directly
-      res.json({ url: dataUrl, success: true });
+      // Ignored in read-only environments
     }
+
+    // Return the permanent publicly accessible API route URL
+    const publicUrl = `/api/images/${safeName}`;
+    res.json({ url: publicUrl, success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Upload failed' });
+  }
+});
+
+// Public image serving endpoint (accessible without admin auth for storefront)
+apiRouter.get('/images/:id', (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    // 1. Try finding in store database
+    const saved = store.getImage(id);
+    if (saved) {
+      const buffer = Buffer.from(saved.data, 'base64');
+      res.setHeader('Content-Type', saved.mimeType || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.send(buffer);
+      return;
+    }
+
+    // 2. Try finding on local filesystem
+    const diskPath = path.join(UPLOADS_DIR, id);
+    if (fs.existsSync(diskPath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.sendFile(diskPath);
+      return;
+    }
+
+    res.status(404).json({ error: 'Image not found' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to serve image' });
   }
 });
 

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   X, LayoutDashboard, Package, Boxes, Settings, ShieldCheck,
   LogOut, Plus, Search, Edit3, Trash2, AlertTriangle, RefreshCw, Upload,
-  Save, Phone, Facebook, MessageCircle, ExternalLink, CheckCircle2
+  Save, Phone, Facebook, MessageCircle, ExternalLink, CheckCircle2,
+  Loader2, Image as ImageIcon
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { Product, SiteSettings, AdminStats } from '../types/index.ts';
+import { uploadImageToFirebase } from '../lib/firebase.ts';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -34,6 +36,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [productSearch, setProductSearch] = useState('');
   const [productDeptFilter, setProductDeptFilter] = useState<string>('all');
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('all');
+
+  // Image upload state & immediate preview
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Website Settings form
   const [settingsForm, setSettingsForm] = useState<SiteSettings>(settings);
@@ -126,6 +133,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
       setIsProductModalOpen(false);
       setEditingProduct(null);
+      setImagePreviewUrl(null);
+      setImageUploadError(null);
       await loadAdminData();
       await refreshProducts();
     } catch (err: any) {
@@ -170,35 +179,98 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
+    setImageUploadError(null);
+    // Clear input value so selecting the same file again triggers onChange
+    e.target.value = '';
+
+    // Validate type and size (max 10MB)
+    if (!file.type.startsWith('image/')) {
+      setImageUploadError('Please select a valid image file (JPEG, PNG, WEBP, etc.)');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageUploadError('Image size exceeds 10MB limit. Please choose a smaller photo.');
+      return;
+    }
+
+    // Immediate preview for instant visual feedback on both mobile (iPhone Safari) and desktop
+    const localPreview = URL.createObjectURL(file);
+    setImagePreviewUrl(localPreview);
+    setIsUploadingImage(true);
+
+    try {
+      let uploadedUrl: string | null = null;
+      let usedFirebase = false;
+
+      // 1. Attempt upload to Firebase Storage (primary persistent storage)
       try {
+        const fbResult = await uploadImageToFirebase(file);
+        if (fbResult.url) {
+          uploadedUrl = fbResult.url;
+          usedFirebase = true;
+        } else if (fbResult.error) {
+          console.warn('Firebase Storage upload notice (will use persistent store):', fbResult.error);
+        }
+      } catch (fbErr: any) {
+        console.warn('Firebase Storage error (will use persistent store):', fbErr);
+      }
+
+      // 2. Fallback to server persistent store via /api/upload if Firebase Storage is not activated yet
+      if (!uploadedUrl) {
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
         const res = await fetch('/api/upload', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${adminToken}`
           },
-          body: JSON.stringify({ dataUrl, filename: file.name })
+          body: JSON.stringify({ dataUrl: base64Data, filename: file.name })
         });
-        const data = await res.json();
-        if (data.url) {
-          setEditingProduct(prev => ({
-            ...prev,
-            images: [data.url, ...(prev?.images || [])]
-          }));
-          showToast('Image uploaded successfully');
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned error status ${res.status}`);
         }
-      } catch (err) {
-        alert('Image upload failed');
+
+        const data = await res.json();
+        if (!data.url) {
+          throw new Error('Server did not return a valid image URL');
+        }
+        uploadedUrl = data.url;
       }
-    };
-    reader.readAsDataURL(file);
+
+      // Save the resulting permanent, publicly readable image URL in product record
+      setEditingProduct(prev => ({
+        ...prev,
+        images: [uploadedUrl!, ...(prev?.images?.filter(img => img !== uploadedUrl) || [])]
+      }));
+
+      // Update preview to the permanent uploaded URL
+      setImagePreviewUrl(uploadedUrl);
+
+      if (usedFirebase) {
+        showToast('Photo uploaded permanently to Firebase Storage');
+      } else {
+        showToast('Photo uploaded permanently to server store');
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Image upload failed. Please try again.';
+      console.error('Image upload failed:', err);
+      setImageUploadError(msg);
+      showToast('Image upload failed: ' + msg);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Website Settings Save
@@ -597,13 +669,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         description: '',
                         price: 29.00,
                         originalPrice: 38.00,
-                        images: ['/src/assets/images/product_striped_knit_top_1792786508889.jpg'],
+                        images: [],
                         sizes: ['S', 'M', 'L'],
                         colors: ['Black', 'White'],
                         stock: 20,
                         isFeatured: true,
                         isActive: true
                       });
+                      setImagePreviewUrl(null);
+                      setImageUploadError(null);
                       setIsProductModalOpen(true);
                     }}
                     className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
@@ -709,6 +783,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               <button
                                 onClick={() => {
                                   setEditingProduct(prod);
+                                  setImagePreviewUrl(prod.images?.[0] || null);
+                                  setImageUploadError(null);
                                   setIsProductModalOpen(true);
                                 }}
                                 className="p-1.5 text-zinc-500 hover:text-black rounded hover:bg-zinc-100 transition-colors cursor-pointer"
@@ -1303,7 +1379,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 {editingProduct?.id ? 'Edit Product' : 'Add New Product'}
               </h3>
               <button
-                onClick={() => setIsProductModalOpen(false)}
+                onClick={() => {
+                  setIsProductModalOpen(false);
+                  setEditingProduct(null);
+                  setImagePreviewUrl(null);
+                  setImageUploadError(null);
+                }}
                 className="p-1 text-zinc-400 hover:text-black rounded cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1456,24 +1537,145 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Photos */}
-              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2">
-                <label className="block font-bold text-zinc-700">Product Photos</label>
-                <div className="flex items-center gap-3">
-                  <label className="px-3 py-2 bg-white border border-zinc-300 rounded-lg hover:bg-zinc-100 cursor-pointer font-semibold flex items-center gap-1.5 shadow-2xs">
-                    <Upload className="w-3.5 h-3.5 text-zinc-600" />
-                    <span>Upload Image File</span>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  </label>
-                  <span className="text-[11px] text-zinc-500">or enter image path / URL below</span>
+              {/* Product Photos & Immediate Preview */}
+              <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block font-bold text-xs text-zinc-800 uppercase tracking-wider">
+                      Product Photo
+                    </label>
+                    <p className="text-[11px] text-zinc-500">
+                      Upload from iPhone / Android photo library or desktop. Photos persist permanently.
+                    </p>
+                  </div>
+
+                  {/* Cross-browser & iPhone Safari reliable Upload Button */}
+                  <div className="relative inline-flex items-center overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      disabled={isUploadingImage}
+                      className="px-3.5 py-2 bg-zinc-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      {isUploadingImage ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5 text-white" />
+                          <span>Upload Image File</span>
+                        </>
+                      )}
+                    </button>
+                    <input
+                      id="product-photo-upload-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImage}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      aria-label="Upload Product Image File"
+                    />
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={editingProduct?.images?.[0] || ''}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, images: [e.target.value] })}
-                  placeholder="/src/assets/images/..."
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white"
-                />
+
+                {/* Upload Error Banner */}
+                {imageUploadError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">{imageUploadError}</p>
+                      <p className="text-[11px] text-red-600/80 mt-0.5">
+                        Ensure image size is under 10MB. You can also paste a permanent image URL below.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Immediate Visual Thumbnail Preview */}
+                {(imagePreviewUrl || editingProduct?.images?.[0]) ? (
+                  <div className="flex items-center gap-3.5 p-3 bg-white rounded-xl border border-zinc-200">
+                    <div className="relative w-20 h-24 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-100 shrink-0">
+                      <img
+                        src={imagePreviewUrl || editingProduct?.images?.[0]}
+                        alt="Product Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/src/assets/images/hero_fashion_models_1792786507434.jpg';
+                        }}
+                      />
+                      {isUploadingImage && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1 text-white text-[10px] font-bold p-1 text-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-white" />
+                          <span>Saving...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        {isUploadingImage ? (
+                          <span className="text-[11px] font-bold text-amber-600 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Uploading to permanent storage...
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Permanent photo ready
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-mono text-zinc-500 truncate" title={imagePreviewUrl || editingProduct?.images?.[0]}>
+                        {imagePreviewUrl || editingProduct?.images?.[0]}
+                      </p>
+                      <div className="pt-1 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImagePreviewUrl(null);
+                            setEditingProduct(prev => ({
+                              ...prev,
+                              images: prev?.images ? prev.images.slice(1) : []
+                            }));
+                          }}
+                          className="text-[11px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Remove Photo</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white rounded-xl border border-dashed border-zinc-300 text-center">
+                    <ImageIcon className="w-6 h-6 text-zinc-400 mx-auto mb-1" />
+                    <p className="text-xs font-semibold text-zinc-600">No product photo selected</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">Click "Upload Image File" above to pick from device or enter URL below.</p>
+                  </div>
+                )}
+
+                {/* Permanent Public Image URL input */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-600 mb-1">
+                    Permanent Public Image URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editingProduct?.images?.[0] || ''}
+                    onChange={(e) => {
+                      const url = e.target.value;
+                      setEditingProduct({ ...editingProduct, images: url ? [url] : [] });
+                      setImagePreviewUrl(url || null);
+                    }}
+                    placeholder="https://firebasestorage.googleapis.com/... or /api/images/..."
+                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg bg-white text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Saved image URL persists permanently on your site and works across page refreshes, devices, and deployments.
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-6 pt-2">
@@ -1500,7 +1702,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               <div className="flex justify-end gap-2 pt-4 border-t border-zinc-200">
                 <button
                   type="button"
-                  onClick={() => setIsProductModalOpen(false)}
+                  onClick={() => {
+                    setIsProductModalOpen(false);
+                    setEditingProduct(null);
+                    setImagePreviewUrl(null);
+                    setImageUploadError(null);
+                  }}
                   className="px-4 py-2 text-zinc-600 font-bold cursor-pointer"
                 >
                   Cancel
