@@ -15,10 +15,23 @@ const isProd = process.env.NODE_ENV === 'production';
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Ensure upload directory exists
-const UPLOADS_DIR = path.resolve(process.cwd(), 'public/uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+export const isVercel = Boolean(
+  process.env.VERCEL ||
+  process.env.NOW_REGION ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+// Ensure upload directory exists safely
+const UPLOADS_DIR = isVercel
+  ? path.join('/tmp', 'uploads')
+  : path.resolve(process.cwd(), 'public/uploads');
+
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Could not initialize uploads directory:', e);
 }
 
 // Serve public uploads statically
@@ -112,9 +125,10 @@ function createAdminSession(): string {
 // ==========================================
 // API ROUTES
 // ==========================================
+export const apiRouter = express.Router();
 
 // Settings
-app.get('/api/settings', (_req: Request, res: Response) => {
+apiRouter.get('/settings', (_req: Request, res: Response) => {
   try {
     const settings = store.getSettings();
     res.json(settings);
@@ -123,7 +137,7 @@ app.get('/api/settings', (_req: Request, res: Response) => {
   }
 });
 
-app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
+apiRouter.put('/settings', requireAdmin, (req: Request, res: Response) => {
   try {
     const updated = store.updateSettings(req.body);
     res.json(updated);
@@ -133,7 +147,7 @@ app.put('/api/settings', requireAdmin, (req: Request, res: Response) => {
 });
 
 // Products
-app.get('/api/products', (req: Request, res: Response) => {
+apiRouter.get('/products', (req: Request, res: Response) => {
   try {
     const department = req.query.department as string | undefined;
     const category = req.query.category as string | undefined;
@@ -148,7 +162,7 @@ app.get('/api/products', (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/products/:id', (req: Request, res: Response) => {
+apiRouter.get('/products/:id', (req: Request, res: Response) => {
   try {
     const product = store.getProductById(req.params.id);
     if (!product) {
@@ -161,7 +175,7 @@ app.get('/api/products/:id', (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
+apiRouter.post('/products', requireAdmin, (req: Request, res: Response) => {
   try {
     const { name, department, category, subcategory, description, price, originalPrice, salePrice, images, sizes, colors, stock, isFeatured, isActive } = req.body;
     if (!name || price === undefined || !department) {
@@ -197,7 +211,7 @@ app.post('/api/products', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-app.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+apiRouter.put('/products/:id', requireAdmin, (req: Request, res: Response) => {
   try {
     if (req.body.department && req.body.department !== 'men' && req.body.department !== 'women') {
       res.status(400).json({ error: "Validation Error: Department must be strictly 'men' or 'women'." });
@@ -214,7 +228,7 @@ app.put('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
+apiRouter.delete('/products/:id', requireAdmin, (req: Request, res: Response) => {
   try {
     const success = store.deleteProduct(req.params.id);
     if (!success) {
@@ -228,7 +242,7 @@ app.delete('/api/products/:id', requireAdmin, (req: Request, res: Response) => {
 });
 
 // Admin Stats
-app.get('/api/admin/stats', requireAdmin, (_req: Request, res: Response) => {
+apiRouter.get('/admin/stats', requireAdmin, (_req: Request, res: Response) => {
   try {
     const stats = store.getStats();
     res.json(stats);
@@ -238,7 +252,7 @@ app.get('/api/admin/stats', requireAdmin, (_req: Request, res: Response) => {
 });
 
 // Admin PIN Verification
-app.post('/api/admin/verify-pin', (req: Request, res: Response) => {
+apiRouter.post('/admin/verify-pin', (req: Request, res: Response) => {
   const ip = getClientIp(req);
   const rateLimit = checkRateLimit(ip);
 
@@ -288,7 +302,7 @@ app.post('/api/admin/verify-pin', (req: Request, res: Response) => {
 });
 
 // Admin Password Login (alternative to PIN)
-app.post('/api/admin/login', (req: Request, res: Response) => {
+apiRouter.post('/admin/login', (req: Request, res: Response) => {
   const { password } = req.body;
   if (!password || typeof password !== 'string') {
     res.status(400).json({ error: 'Password is required' });
@@ -311,7 +325,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
 });
 
 // Check Session
-app.get('/api/admin/check-session', requireAdmin, (_req: Request, res: Response) => {
+apiRouter.get('/admin/check-session', requireAdmin, (_req: Request, res: Response) => {
   const auth = store.getAuth();
   res.json({
     valid: true,
@@ -320,7 +334,7 @@ app.get('/api/admin/check-session', requireAdmin, (_req: Request, res: Response)
 });
 
 // Change PIN
-app.post('/api/admin/change-pin', requireAdmin, (req: Request, res: Response) => {
+apiRouter.post('/admin/change-pin', requireAdmin, (req: Request, res: Response) => {
   try {
     const { currentPin, newPin, confirmPin } = req.body;
 
@@ -353,7 +367,7 @@ app.post('/api/admin/change-pin', requireAdmin, (req: Request, res: Response) =>
 });
 
 // Change Password
-app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Response) => {
+apiRouter.post('/admin/change-password', requireAdmin, (req: Request, res: Response) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
@@ -386,7 +400,7 @@ app.post('/api/admin/change-password', requireAdmin, (req: Request, res: Respons
 });
 
 // Image Upload Endpoint (handles data URLs or base64 files)
-app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
+apiRouter.post('/upload', requireAdmin, (req: Request, res: Response) => {
   try {
     const { dataUrl, filename } = req.body;
     if (!dataUrl || typeof dataUrl !== 'string') {
@@ -405,15 +419,39 @@ app.post('/api/upload', requireAdmin, (req: Request, res: Response) => {
     const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
 
     const safeName = (filename ? filename.replace(/[^a-zA-Z0-9_-]/g, '') : 'img') + `_${Date.now()}.${ext}`;
-    const filePath = path.join(UPLOADS_DIR, safeName);
 
-    fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
-
-    const publicUrl = `/uploads/${safeName}`;
-    res.json({ url: publicUrl, success: true });
+    try {
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+      const filePath = path.join(UPLOADS_DIR, safeName);
+      fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+      const publicUrl = `/uploads/${safeName}`;
+      res.json({ url: publicUrl, success: true });
+    } catch {
+      // In serverless environments where local file system writes may be restricted, return dataUrl directly
+      res.json({ url: dataUrl, success: true });
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Upload failed' });
   }
+});
+
+// API 404 Handler - returns JSON, never HTML
+apiRouter.all('*', (req: Request, res: Response) => {
+  res.status(404).json({ error: `API route ${req.method} ${req.originalUrl || req.url} not found` });
+});
+
+// Register apiRouter under both /api and root (to handle cases where Vercel rewrites strip /api)
+app.use('/api', apiRouter);
+app.use(apiRouter);
+
+// Global JSON error handler
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled server error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error'
+  });
 });
 
 // ==========================================
@@ -443,7 +481,21 @@ async function startServer() {
   });
 }
 
-startServer().catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+const isDirectRun = Boolean(
+  process.argv[1] && (
+    process.argv[1].endsWith('server.ts') ||
+    process.argv[1].endsWith('server.js') ||
+    process.argv[1].endsWith('/server')
+  )
+);
+
+// Only start standalone HTTP server when directly executing server.ts and NOT running as a Vercel serverless function
+if (!isVercel && isDirectRun) {
+  startServer().catch(err => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
+
+export default app;
+export { app };

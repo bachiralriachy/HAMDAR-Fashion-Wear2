@@ -133,9 +133,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const fetchProducts = async () => {
     try {
       const res = await fetch('/api/products?activeOnly=true');
-      if (!res.ok) throw new Error('Failed to load products');
-      const data = await res.json();
-      setProducts(data);
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok) throw new Error(`Failed to load products (${res.status})`);
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        setProducts(data);
+      }
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
       setError(err.message);
@@ -145,7 +148,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
-      if (res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.includes('application/json')) {
         const data = await res.json();
         setSettings(data);
       }
@@ -164,9 +168,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       fetch('/api/admin/check-session', {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(res => res.json())
+        .then(async res => {
+          const ct = res.headers.get('content-type') || '';
+          if (res.ok && ct.includes('application/json')) {
+            return res.json();
+          }
+          return { valid: false };
+        })
         .then(data => {
-          if (data.valid) {
+          if (data && data.valid) {
             setAdminToken(token);
             setIsInitialSetup(Boolean(data.isInitialSetup));
           } else {
@@ -309,10 +319,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error, remainingAttempts: data.remainingAttempts };
+
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = null;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text().catch(() => '');
+        return {
+          success: false,
+          error: res.status === 404
+            ? 'Backend API route not found. Please ensure Vercel deployment has finished.'
+            : `Server response error (${res.status}): ${text.slice(0, 100) || 'Non-JSON response'}`
+        };
       }
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data?.error || 'Verification failed',
+          remainingAttempts: data?.remainingAttempts
+        };
+      }
+
+      if (!data?.token) {
+        return { success: false, error: 'Authentication token missing from server response.' };
+      }
+
       localStorage.setItem('hamdar_admin_token', data.token);
       setAdminToken(data.token);
       setIsInitialSetup(Boolean(data.isInitialSetup));
@@ -330,10 +363,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error };
+
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = null;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        return { success: false, error: 'Server returned unexpected response format' };
       }
+
+      if (!res.ok) {
+        return { success: false, error: data?.error || 'Login failed' };
+      }
+
       localStorage.setItem('hamdar_admin_token', data.token);
       setAdminToken(data.token);
       setIsInitialSetup(Boolean(data.isInitialSetup));

@@ -61,8 +61,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         fetch('/api/products?activeOnly=false')
       ]);
 
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (productsRes.ok) setAllProducts(await productsRes.json());
+      const statsCt = statsRes.headers.get('content-type') || '';
+      if (statsRes.ok && statsCt.includes('application/json')) {
+        setStats(await statsRes.json());
+      }
+      const prodCt = productsRes.headers.get('content-type') || '';
+      if (productsRes.ok && prodCt.includes('application/json')) {
+        setAllProducts(await productsRes.json());
+      }
     } catch (err) {
       console.error('Failed to load admin dashboard data', err);
     } finally {
@@ -240,9 +246,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         },
         body: JSON.stringify({ currentPin, newPin, confirmPin })
       });
-      const data = await res.json();
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : null;
       if (!res.ok) {
-        setPinMessage({ text: data.error || 'Failed to change PIN.', error: true });
+        setPinMessage({ text: data?.error || `Failed to change PIN (${res.status})`, error: true });
       } else {
         setPinMessage({ text: 'PIN successfully changed! Please remember your new PIN.', error: false });
         setCurrentPin('');
@@ -276,9 +283,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         },
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
       });
-      const data = await res.json();
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : null;
       if (!res.ok) {
-        setPasswordMessage({ text: data.error || 'Failed to change password.', error: true });
+        setPasswordMessage({ text: data?.error || `Failed to change password (${res.status})`, error: true });
       } else {
         setPasswordMessage({ text: 'Password successfully updated!', error: false });
         setCurrentPassword('');

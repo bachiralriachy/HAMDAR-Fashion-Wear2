@@ -1,10 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { Product, SiteSettings, AdminStats } from '../src/types/index.ts';
+import type { Product, SiteSettings, AdminStats } from '../src/types/index.ts';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DATA_FILE = path.join(DATA_DIR, 'store.json');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const REPO_DATA_DIR = path.resolve(process.cwd(), 'data');
+const REPO_DATA_FILE = path.join(REPO_DATA_DIR, 'store.json');
+const TMP_DATA_DIR = path.join('/tmp', 'hamdar-data');
+const TMP_DATA_FILE = path.join(TMP_DATA_DIR, 'store.json');
 
 export interface AdminAuth {
   pinSalt: string;
@@ -346,28 +349,62 @@ class StoreManager {
     this.data = this.loadData();
   }
 
+  private getStoragePaths() {
+    if (isServerless) {
+      return {
+        preferredRead: fs.existsSync(TMP_DATA_FILE) ? TMP_DATA_FILE : REPO_DATA_FILE,
+        fallbackRead: REPO_DATA_FILE,
+        writeDir: TMP_DATA_DIR,
+        writeFile: TMP_DATA_FILE
+      };
+    }
+    return {
+      preferredRead: REPO_DATA_FILE,
+      fallbackRead: REPO_DATA_FILE,
+      writeDir: REPO_DATA_DIR,
+      writeFile: REPO_DATA_FILE
+    };
+  }
+
   private loadData(): StoreData {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const { preferredRead, fallbackRead, writeDir, writeFile } = this.getStoragePaths();
+
+    // 1. Try preferred read location
+    const candidates = [preferredRead];
+    if (fallbackRead && fallbackRead !== preferredRead) {
+      candidates.push(fallbackRead);
     }
 
-    if (fs.existsSync(DATA_FILE)) {
-      try {
-        const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.products) && parsed.settings && parsed.auth) {
-          // Ensure all existing products conform to 'men' | 'women'
-          parsed.products = parsed.products.map((p: any) => {
-            let dept = p.department;
-            if (dept !== 'men' && dept !== 'women') {
-              dept = (p.subcategory?.includes('Men') || p.name?.toLowerCase().includes('men') || p.category?.toLowerCase().includes('men')) ? 'men' : 'women';
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        try {
+          const raw = fs.readFileSync(filePath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.products) && parsed.settings && parsed.auth) {
+            // Ensure all existing products conform to 'men' | 'women'
+            parsed.products = parsed.products.map((p: any) => {
+              let dept = p.department;
+              if (dept !== 'men' && dept !== 'women') {
+                dept = (p.subcategory?.includes('Men') || p.name?.toLowerCase().includes('men') || p.category?.toLowerCase().includes('men')) ? 'men' : 'women';
+              }
+              return { ...p, department: dept };
+            });
+
+            // If on serverless and tmp file doesn't exist yet, seed it
+            if (isServerless && !fs.existsSync(writeFile)) {
+              try {
+                if (!fs.existsSync(writeDir)) fs.mkdirSync(writeDir, { recursive: true });
+                fs.writeFileSync(writeFile, raw, 'utf-8');
+              } catch (seedErr) {
+                console.warn('Could not seed /tmp store file:', seedErr);
+              }
             }
-            return { ...p, department: dept };
-          });
-          return parsed;
+
+            return parsed;
+          }
+        } catch (err) {
+          console.error(`Error reading data from ${filePath}:`, err);
         }
-      } catch (err) {
-        console.error('Error reading store.json, reinitializing default data:', err);
       }
     }
 
@@ -392,12 +429,17 @@ class StoreManager {
   }
 
   private saveDataDirect(data: StoreData) {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const { writeDir, writeFile } = this.getStoragePaths();
+    try {
+      if (!fs.existsSync(writeDir)) {
+        fs.mkdirSync(writeDir, { recursive: true });
+      }
+      const tempFile = `${writeFile}.tmp.${Date.now()}`;
+      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+      fs.renameSync(tempFile, writeFile);
+    } catch (err) {
+      console.warn('Could not persist store data to disk (running with in-memory state):', err);
     }
-    const tempFile = `${DATA_FILE}.tmp.${Date.now()}`;
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-    fs.renameSync(tempFile, DATA_FILE);
   }
 
   private persist() {
