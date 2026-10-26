@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { Product, SiteSettings, AdminStats } from '../types/index.ts';
-import { uploadImageToFirebase } from '../lib/firebase.ts';
+import { uploadImageToFirebase, checkFirebaseStorageBucket } from '../lib/firebase.ts';
+import { optimizeProductImage } from '../lib/imageOptimizer.ts';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -41,6 +42,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [uploadStage, setUploadStage] = useState<string | null>(null);
+  const [uploadDiagnostics, setUploadDiagnostics] = useState<string[]>([]);
 
   // Website Settings form
   const [settingsForm, setSettingsForm] = useState<SiteSettings>(settings);
@@ -91,6 +94,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   // Product Actions
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUploadingImage) {
+      alert('Photo upload is currently in progress. Please wait for the upload to complete before saving.');
+      return;
+    }
+
     if (!editingProduct?.name || editingProduct?.price === undefined || !editingProduct?.department) {
       alert('Please fill in product name, price, and select either MEN or WOMEN department.');
       return;
@@ -98,6 +106,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
     if (editingProduct.department !== 'men' && editingProduct.department !== 'women') {
       alert("Validation Error: Every product must be strictly assigned to MEN or WOMEN department.");
+      return;
+    }
+
+    // Ensure image is a permanent URL and not a temporary blob: URL
+    const firstImg = editingProduct.images?.[0];
+    if (firstImg && firstImg.startsWith('blob:')) {
+      alert("Cannot save product with a temporary blob URL. Please wait for the photo upload to complete or enter a valid HTTPS image URL.");
+      return;
+    }
+
+    if (!firstImg) {
+      alert("Please upload a product photo or provide a permanent image URL before saving.");
       return;
     }
 
@@ -181,95 +201,99 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    const logTrace: string[] = [];
+    const addDiag = (msg: string) => {
+      console.log(`[PhotoUpload] ${msg}`);
+      logTrace.push(msg);
+      setUploadDiagnostics([...logTrace]);
+    };
+
+    if (!file) {
+      addDiag('No file selected from file picker');
+      return;
+    }
+
+    if (isUploadingImage) {
+      addDiag('Upload currently in progress. Ignoring duplicate trigger.');
+      return;
+    }
 
     setImageUploadError(null);
+    setUploadDiagnostics([]);
     // Clear input value so selecting the same file again triggers onChange
     e.target.value = '';
 
-    // Validate type and size (max 10MB)
+    addDiag(`File received: "${file.name}" (${(file.size / (1024 * 1024)).toFixed(2)} MB, MIME: ${file.type || 'unknown'})`);
+
+    // Validate type and size (max 15MB)
     if (!file.type.startsWith('image/')) {
-      setImageUploadError('Please select a valid image file (JPEG, PNG, WEBP, etc.)');
+      const err = 'Please select a valid image file (JPEG, PNG, WEBP, etc.)';
+      addDiag(`Validation error: ${err}`);
+      setImageUploadError(err);
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setImageUploadError('Image size exceeds 10MB limit. Please choose a smaller photo.');
+    if (file.size > 15 * 1024 * 1024) {
+      const err = 'Image size exceeds 15MB limit. Please choose a smaller photo.';
+      addDiag(`Validation error: ${err}`);
+      setImageUploadError(err);
       return;
     }
 
-    // Immediate preview for instant visual feedback on both mobile (iPhone Safari) and desktop
+    // Show immediate thumbnail preview for user visual feedback
     const localPreview = URL.createObjectURL(file);
     setImagePreviewUrl(localPreview);
     setIsUploadingImage(true);
+    setUploadStage('Optimizing photo dimensions and compression...');
 
     try {
-      let uploadedUrl: string | null = null;
-      let usedFirebase = false;
+      // Step 1: Client-side downscaling & compression to prevent timeouts and payload issues
+      addDiag('Optimizing image dimensions & compression on client...');
+      const optimized = await optimizeProductImage(file, 1600, 0.85);
+      addDiag(`Optimized: ${optimized.width}x${optimized.height} px, ${(optimized.optimizedSize / 1024).toFixed(0)} KB (from ${(file.size / 1024).toFixed(0)} KB)`);
 
-      // 1. Attempt upload to Firebase Storage (primary persistent storage)
-      try {
-        const fbResult = await uploadImageToFirebase(file);
-        if (fbResult.url) {
-          uploadedUrl = fbResult.url;
-          usedFirebase = true;
-        } else if (fbResult.error) {
-          console.warn('Firebase Storage upload notice (will use persistent store):', fbResult.error);
-        }
-      } catch (fbErr: any) {
-        console.warn('Firebase Storage error (will use persistent store):', fbErr);
+      // Step 2: Check Firebase Storage endpoint availability with fast fail
+      setUploadStage('Checking Firebase Storage connection...');
+      addDiag('Verifying Firebase Storage endpoint connectivity...');
+      const bucketStatus = await checkFirebaseStorageBucket();
+      addDiag(bucketStatus.message);
+
+      if (!bucketStatus.exists) {
+        throw new Error(bucketStatus.message);
       }
 
-      // 2. Fallback to server persistent store via /api/upload if Firebase Storage is not activated yet
-      if (!uploadedUrl) {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+      // Step 3: Direct browser-to-Firebase Storage upload using Firebase Web SDK
+      setUploadStage('Uploading directly to Firebase Storage...');
+      addDiag('Initiating direct uploadBytes() to Firebase Storage...');
+      const fbResult = await uploadImageToFirebase(optimized.blob, optimized.filename);
 
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${adminToken}`
-          },
-          body: JSON.stringify({ dataUrl: base64Data, filename: file.name })
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Server returned error status ${res.status}`);
-        }
-
-        const data = await res.json();
-        if (!data.url) {
-          throw new Error('Server did not return a valid image URL');
-        }
-        uploadedUrl = data.url;
+      if (!fbResult.url) {
+        throw new Error(fbResult.error || 'Firebase Storage rejected the upload');
       }
 
-      // Save the resulting permanent, publicly readable image URL in product record
+      addDiag(`Direct upload succeeded: ${fbResult.url}`);
+
+      // Step 4: Save permanent download URL in product record
       setEditingProduct(prev => ({
         ...prev,
-        images: [uploadedUrl!, ...(prev?.images?.filter(img => img !== uploadedUrl) || [])]
+        images: [fbResult.url, ...(prev?.images?.filter(img => img !== fbResult.url && !img.startsWith('blob:')) || [])]
       }));
 
       // Update preview to the permanent uploaded URL
-      setImagePreviewUrl(uploadedUrl);
-
-      if (usedFirebase) {
-        showToast('Photo uploaded permanently to Firebase Storage');
-      } else {
-        showToast('Photo uploaded permanently to server store');
-      }
+      setImagePreviewUrl(fbResult.url);
+      setUploadStage(null);
+      showToast('Photo uploaded permanently to Firebase Storage');
     } catch (err: any) {
       const msg = err?.message || 'Image upload failed. Please try again.';
-      console.error('Image upload failed:', err);
+      addDiag(`Upload halted: ${msg}`);
       setImageUploadError(msg);
-      showToast('Image upload failed: ' + msg);
+      // Revert preview if upload failed so user is not misled
+      setImagePreviewUrl(editingProduct?.images?.[0] || null);
+      showToast('Upload error: ' + msg);
     } finally {
+      // Step 5: Always clear loading states in finally block
       setIsUploadingImage(false);
+      setUploadStage(null);
+      URL.revokeObjectURL(localPreview);
     }
   };
 
@@ -1580,16 +1604,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   </div>
                 </div>
 
-                {/* Upload Error Banner */}
+                {/* Active Upload Stage Progress */}
+                {isUploadingImage && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 font-semibold">
+                    <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
+                    <span>{uploadStage || 'Processing and securing image...'}</span>
+                  </div>
+                )}
+
+                {/* Upload Error Banner & Diagnostic Trace */}
                 {imageUploadError && (
-                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold">{imageUploadError}</p>
-                      <p className="text-[11px] text-red-600/80 mt-0.5">
-                        Ensure image size is under 10MB. You can also paste a permanent image URL below.
-                      </p>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2 text-xs text-red-800">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-red-900">Upload Failed</p>
+                        <p className="text-[11px] text-red-700 mt-0.5">{imageUploadError}</p>
+                      </div>
                     </div>
+
+                    {uploadDiagnostics.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-red-200/60 font-mono text-[10px] text-red-800 space-y-0.5 max-h-32 overflow-y-auto bg-red-100/50 p-2 rounded-lg">
+                        <p className="font-bold uppercase tracking-wider text-red-900/80 mb-1">Upload Diagnostics:</p>
+                        {uploadDiagnostics.map((diag, idx) => (
+                          <div key={idx} className="truncate">• {diag}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1714,9 +1755,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                  disabled={isUploadingImage}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  Save Product
+                  {isUploadingImage && <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />}
+                  <span>{isUploadingImage ? 'Uploading Photo...' : 'Save Product'}</span>
                 </button>
               </div>
             </form>

@@ -3,7 +3,6 @@ import app from '../server.ts';
 
 export default function handler(req: Request, res: Response) {
   if (req.url) {
-    // If Vercel rewrote query parameters, e.g. /api?0=admin/verify-pin
     if (req.url.startsWith('/api?') || req.url.startsWith('/api/?')) {
       const url = new URL(req.url, 'http://localhost');
       const path = url.searchParams.get('0');

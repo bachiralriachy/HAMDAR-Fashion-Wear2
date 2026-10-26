@@ -28,8 +28,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-18T21:10:22.047Z",
-      "updatedAt": "2026-10-24T11:07:53.226Z"
+      "createdAt": "2026-10-21T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-002",
@@ -61,8 +61,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-19T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-22T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-003",
@@ -94,8 +94,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-17T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-20T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-004",
@@ -123,8 +123,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-20T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-23T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-005",
@@ -152,8 +152,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-20T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-23T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-006",
@@ -181,8 +181,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-21T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-24T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-007",
@@ -211,8 +211,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-21T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-24T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-008",
@@ -242,8 +242,8 @@
       "isFeatured": false,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-16T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-19T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-009",
@@ -274,8 +274,8 @@
       "isFeatured": true,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-18T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-21T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-010",
@@ -303,8 +303,8 @@
       "isFeatured": false,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-15T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-18T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-011",
@@ -335,8 +335,8 @@
       "isFeatured": false,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-14T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-17T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     },
     {
       "id": "hmd-012",
@@ -366,8 +366,8 @@
       "isFeatured": false,
       "isActive": true,
       "isExample": true,
-      "createdAt": "2026-10-13T21:10:22.047Z",
-      "updatedAt": "2026-10-23T21:10:22.047Z"
+      "createdAt": "2026-10-16T10:40:36.524Z",
+      "updatedAt": "2026-10-26T10:40:36.524Z"
     }
   ],
   "settings": {
@@ -392,22 +392,17 @@
     "logoText": "HAMDAR"
   },
   "auth": {
-    "pinSalt": "2d182e6f50ce567c167c012fe1ef1955",
-    "pinHash": "02a7777d38be49adb6245663576073f741fdbe15de64f261600ce658ef148a4e0ab62df886ea8cef90e826ec7b4c90375fe023cc4db82461eb595542e88ee3f9",
-    "passwordSalt": "f7aa316c373d9f9f109b24d2fe57ae99",
-    "passwordHash": "4e5e4f4acc625dca5b507ef3ecbb043b3dd934617a08163d6fb8cfd2f7d9687fc42e4b8c34c73faec9771d88eee3a2da9bad0756cfeb9bdbeb2170f29b6db48a",
-    "isInitialSetup": false
+    "pinSalt": "cb9af928235e83b11a7be3cebd5d8439",
+    "pinHash": "6b02ec397f2a9aeee320507c12d84fc6436cb8f985450492798d44921b78f5d186ec23dbcfae6967c7bd62de95c6e80804621ef92ae239ef436f91eced8ad2bf",
+    "passwordSalt": "96d5367574d5fd9df0cab32f7b57cb45",
+    "passwordHash": "b326409b92d27a8b34171144e0654980bc365acc1e3e51c7f7cae869a75f71a44ca6e9d56fdd27b6d9f0f26422cd759148bd6a564aa145e762ad3dd01b3f5e1c",
+    "isInitialSetup": true
   },
   "images": {
-    "test_photo_123.jpg": {
-      "mimeType": "image/jpeg",
-      "data": "RkFLRV9KUEVHX0lNQUdFX0JJTkFSWV9EQVRBX1RFU1RfMTIzNDU2",
-      "createdAt": "2026-10-24T16:26:04.011Z"
-    },
-    "test_pixelpng_1792859172167.png": {
+    "test_product_photopng_1793011260591.png": {
       "mimeType": "image/png",
-      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-      "createdAt": "2026-10-24T16:26:12.167Z"
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "createdAt": "2026-10-26T10:41:00.592Z"
     }
   }
 }

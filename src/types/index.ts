@@ -1,11 +1,11 @@
-export type Department = 'men' | 'women';
+export type Department = 'all' | 'men' | 'women' | 'shoes';
 
 export interface Product {
   id: string;
   name: string;
-  department: Department; // strictly 'men' | 'women'
+  department: 'men' | 'women';
   category: string;
-  subcategory?: string; // e.g. "Men's Shoes", "Women's Shoes", "Knitwear", "Hoodies"
+  subcategory?: string;
   description: string;
   price: number;
   originalPrice?: number;
@@ -17,12 +17,12 @@ export interface Product {
   isFeatured: boolean;
   isActive: boolean;
   isExample?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CartItem {
-  id: string; // composite key: `${productId}-${size}-${color}`
+  id: string;
   productId: string;
   product: Product;
   size: string;
@@ -34,12 +34,12 @@ export interface CustomerOrderDetails {
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;
-  city: string;
+  city?: string;
   notes?: string;
 }
 
 export interface WhatsAppOrderPayload {
-  department: Department;
+  department: 'men' | 'women';
   recipientPhone: string;
   recipientNumberFormatted: string;
   encodedUrl: string;

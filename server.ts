@@ -39,7 +39,6 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 
 // ==========================================
 // STATELESS CRYPTOGRAPHIC ADMIN SESSION TOKEN
-// Compatible with Vercel Serverless & Multi-Instance Environments
 // ==========================================
 
 interface RateLimitTracker {
@@ -109,63 +108,68 @@ export function generateAdminSessionToken(durationMs: number = 7 * 24 * 60 * 60 
     exp: Date.now() + durationMs,
     nonce: crypto.randomBytes(16).toString('hex')
   };
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+  const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const secret = getSessionSigningSecret();
-  const signature = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
-  return `${payloadB64}.${signature}`;
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(payloadStr)
+    .digest('base64url');
+
+  return `${payloadStr}.${signature}`;
 }
 
 export function verifyAdminSessionToken(token: string): { valid: boolean; error?: string } {
   if (!token || typeof token !== 'string') {
-    return { valid: false, error: 'Unauthorized: Admin authentication required.' };
+    return { valid: false, error: 'Authentication token required.' };
   }
 
   const parts = token.split('.');
   if (parts.length !== 2) {
-    return { valid: false, error: 'Session format invalid. Please re-enter your PIN.' };
+    return { valid: false, error: 'Malformed authentication token.' };
   }
 
-  const [payloadB64, signature] = parts;
+  const [payloadStr, signature] = parts;
   const secret = getSessionSigningSecret();
-  const expectedSignature = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  const expectedSig = crypto
+    .createHmac('sha256', secret)
+    .update(payloadStr)
+    .digest('base64url');
 
   try {
-    const sigBuf = Buffer.from(signature);
-    const expectedBuf = Buffer.from(expectedSignature);
-
-    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
-      return { valid: false, error: 'Session invalid or tampered with. Please re-enter your PIN.' };
+    const isSigValid = crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf-8'),
+      Buffer.from(expectedSig, 'utf-8')
+    );
+    if (!isSigValid) {
+      return { valid: false, error: 'Invalid token signature. Authentication rejected.' };
     }
+  } catch {
+    return { valid: false, error: 'Invalid token signature length.' };
+  }
 
-    const jsonStr = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-    const payload = JSON.parse(jsonStr);
-
+  try {
+    const payload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf-8'));
     if (payload.role !== 'admin') {
-      return { valid: false, error: 'Unauthorized role.' };
+      return { valid: false, error: 'Insufficient administrative privileges.' };
     }
-
-    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) {
+    if (typeof payload.exp !== 'number' || Date.now() > payload.exp) {
       return { valid: false, error: 'Session expired. Please re-enter your PIN.' };
     }
-
     return { valid: true };
   } catch {
-    return { valid: false, error: 'Session invalid. Please re-enter your PIN.' };
+    return { valid: false, error: 'Invalid token payload.' };
   }
 }
 
-// Admin Authentication Middleware
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7).trim()
-    : (req.headers['x-admin-token'] as string | undefined)?.trim();
-
-  if (!token) {
-    res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.status(401).json({ error: 'Authorization header required. Please enter admin PIN.' });
     return;
   }
 
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
   const verification = verifyAdminSessionToken(token);
   if (!verification.valid) {
     res.status(401).json({ error: verification.error || 'Session expired or invalid. Please re-enter your PIN.' });
@@ -290,7 +294,7 @@ apiRouter.delete('/products/:id', requireAdmin, (req: Request, res: Response) =>
     }
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Failed to delete product' });
+    res.status(500).json({ error: err.message || 'Failed to delete product' });
   }
 });
 
@@ -354,7 +358,7 @@ apiRouter.post('/admin/verify-pin', (req: Request, res: Response) => {
   });
 });
 
-// Admin Password Login (alternative to PIN)
+// Admin Password Login
 apiRouter.post('/admin/login', (req: Request, res: Response) => {
   const { password } = req.body;
   if (!password || typeof password !== 'string') {
@@ -377,8 +381,8 @@ apiRouter.post('/admin/login', (req: Request, res: Response) => {
   });
 });
 
-// Check Session
-apiRouter.get('/admin/check-session', requireAdmin, (_req: Request, res: Response) => {
+// Auth status
+apiRouter.get('/admin/auth-status', requireAdmin, (_req: Request, res: Response) => {
   const auth = store.getAuth();
   res.json({
     valid: true,
@@ -392,7 +396,7 @@ apiRouter.post('/admin/change-pin', requireAdmin, (req: Request, res: Response) 
     const { currentPin, newPin, confirmPin } = req.body;
 
     if (!currentPin || !newPin || !confirmPin) {
-      res.status(400).json({ error: 'Current PIN, new PIN, and PIN confirmation are required' });
+      res.status(400).json({ error: 'Current PIN, new PIN, and confirmation PIN are required' });
       return;
     }
 
@@ -475,7 +479,7 @@ apiRouter.post('/upload', requireAdmin, (req: Request, res: Response) => {
 
     const safeName = (filename ? filename.replace(/[^a-zA-Z0-9_-]/g, '') : 'img') + `_${Date.now()}.${ext}`;
 
-    // 1. Save to persistent store so it is available across all serverless function instances
+    // 1. Save to persistent store
     store.saveImage(safeName, mimeType, base64Data);
 
     // 2. Also try writing to uploads directory on disk if writable
@@ -497,7 +501,7 @@ apiRouter.post('/upload', requireAdmin, (req: Request, res: Response) => {
   }
 });
 
-// Public image serving endpoint (accessible without admin auth for storefront)
+// Public image serving endpoint
 apiRouter.get('/images/:id', (req: Request, res: Response) => {
   try {
     const id = req.params.id;
@@ -528,7 +532,7 @@ apiRouter.get('/images/:id', (req: Request, res: Response) => {
 // Mount API router ONLY under /api prefix
 app.use('/api', apiRouter);
 
-// Missing /api/* 404 handler - only applies to /api requests, never root or SPA pages
+// Missing /api/* 404 handler
 app.use('/api', (req: Request, res: Response) => {
   res.status(404).json({ error: `API route ${req.method} ${req.originalUrl || req.url} not found` });
 });
@@ -576,7 +580,6 @@ const isDirectRun = Boolean(
   )
 );
 
-// Only start standalone HTTP server when directly executing server.ts and NOT running as a Vercel serverless function
 if (!isVercel && isDirectRun) {
   startServer().catch(err => {
     console.error('Failed to start server:', err);
@@ -585,4 +588,3 @@ if (!isVercel && isDirectRun) {
 }
 
 export default app;
-export { app };

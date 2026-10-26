@@ -24,7 +24,6 @@ export interface StoreData {
   images?: Record<string, { mimeType: string; data: string; createdAt: string }>;
 }
 
-// Password / PIN hashing helpers
 export function hashSecret(secret: string, salt?: string): { salt: string; hash: string } {
   const chosenSalt = salt || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(secret, chosenSalt, 64).toString('hex');
@@ -63,7 +62,6 @@ const defaultSettings: SiteSettings = {
 };
 
 const defaultProducts: Product[] = [
-  // 1. Women's Striped Knit Top
   {
     id: "hmd-001",
     name: "Striped Knit Top",
@@ -87,7 +85,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 2. Men's Essential Heavyweight Hoodie
   {
     id: "hmd-002",
     name: "Essential Heavyweight Hoodie",
@@ -111,7 +108,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 3. Men's Shoes: Retro Court Lifestyle Sneakers
   {
     id: "hmd-003",
     name: "Retro Court Lifestyle Sneakers",
@@ -134,7 +130,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 6).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 4. Women's Heather Ribbed Knit Set
   {
     id: "hmd-004",
     name: "Heather Ribbed Knit Set",
@@ -157,7 +152,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 5. Women's Emerald Green Lounge Set
   {
     id: "hmd-005",
     name: "Emerald Green Lounge Set",
@@ -180,7 +174,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 6. Women's Burgundy Velvet Knit Set
   {
     id: "hmd-006",
     name: "Burgundy Velvet Knit Set",
@@ -203,7 +196,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 7. Men's Quarter-Zip Athletic Top
   {
     id: "hmd-007",
     name: "Quarter-Zip Athletic Top",
@@ -226,7 +218,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 8. Men's Tailored Smart Wool-Blend Trousers
   {
     id: "hmd-008",
     name: "Tailored Smart Wool-Blend Trousers",
@@ -249,7 +240,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 9. Women's Shoes: Chic Platform Classic Sneakers
   {
     id: "hmd-009",
     name: "Chic Platform Classic Sneakers",
@@ -272,7 +262,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 10. Women's Classic Belted Trench Coat
   {
     id: "hmd-010",
     name: "Classic Belted Trench Coat",
@@ -295,7 +284,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 11. Men's Shoes: Urban Runner Monochrome
   {
     id: "hmd-011",
     name: "Urban Runner Monochrome Sneakers",
@@ -318,7 +306,6 @@ const defaultProducts: Product[] = [
     createdAt: new Date(Date.now() - 86400000 * 9).toISOString(),
     updatedAt: new Date().toISOString()
   },
-  // 12. Women's Shoes: Modern Leather Ankle Booties
   {
     id: "hmd-012",
     name: "Modern Leather Chelsea Booties",
@@ -343,37 +330,36 @@ const defaultProducts: Product[] = [
   }
 ];
 
-class StoreManager {
+export class StoreManager {
   private data: StoreData;
 
   constructor() {
     this.data = this.loadData();
   }
 
-  private getStoragePaths() {
+  private getDataPaths(): { preferredDir: string; preferredFile: string; fallbackDir: string; fallbackFile: string } {
     if (isServerless) {
       return {
-        preferredRead: fs.existsSync(TMP_DATA_FILE) ? TMP_DATA_FILE : REPO_DATA_FILE,
-        fallbackRead: REPO_DATA_FILE,
-        writeDir: TMP_DATA_DIR,
-        writeFile: TMP_DATA_FILE
+        preferredDir: fs.existsSync('/tmp') ? TMP_DATA_DIR : REPO_DATA_DIR,
+        preferredFile: TMP_DATA_FILE,
+        fallbackDir: REPO_DATA_DIR,
+        fallbackFile: REPO_DATA_FILE
       };
     }
     return {
-      preferredRead: REPO_DATA_FILE,
-      fallbackRead: REPO_DATA_FILE,
-      writeDir: REPO_DATA_DIR,
-      writeFile: REPO_DATA_FILE
+      preferredDir: REPO_DATA_DIR,
+      preferredFile: REPO_DATA_FILE,
+      fallbackDir: TMP_DATA_DIR,
+      fallbackFile: TMP_DATA_FILE
     };
   }
 
   private loadData(): StoreData {
-    const { preferredRead, fallbackRead, writeDir, writeFile } = this.getStoragePaths();
+    const { preferredFile, fallbackFile, preferredDir } = this.getDataPaths();
 
-    // 1. Try preferred read location
-    const candidates = [preferredRead];
-    if (fallbackRead && fallbackRead !== preferredRead) {
-      candidates.push(fallbackRead);
+    const candidates = [preferredFile];
+    if (fallbackFile && fallbackFile !== preferredFile) {
+      candidates.push(fallbackFile);
     }
 
     for (const filePath of candidates) {
@@ -382,36 +368,17 @@ class StoreManager {
           const raw = fs.readFileSync(filePath, 'utf-8');
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed.products) && parsed.settings && parsed.auth) {
-            // Ensure all existing products conform to 'men' | 'women'
-            parsed.products = parsed.products.map((p: any) => {
-              let dept = p.department;
-              if (dept !== 'men' && dept !== 'women') {
-                dept = (p.subcategory?.includes('Men') || p.name?.toLowerCase().includes('men') || p.category?.toLowerCase().includes('men')) ? 'men' : 'women';
-              }
-              return { ...p, department: dept };
-            });
-
-            // If on serverless and tmp file doesn't exist yet, seed it
-            if (isServerless && !fs.existsSync(writeFile)) {
-              try {
-                if (!fs.existsSync(writeDir)) fs.mkdirSync(writeDir, { recursive: true });
-                fs.writeFileSync(writeFile, raw, 'utf-8');
-              } catch (seedErr) {
-                console.warn('Could not seed /tmp store file:', seedErr);
-              }
-            }
-
             return parsed;
           }
         } catch (err) {
-          console.error(`Error reading data from ${filePath}:`, err);
+          console.error(`Error loading store from ${filePath}:`, err);
         }
       }
     }
 
-    // Default initial admin PIN is '1234' with fresh salt
+    // Default PIN: 1234, Default password: adminpassword123
     const { salt: pinSalt, hash: pinHash } = hashSecret('1234');
-    const { salt: passwordSalt, hash: passwordHash } = hashSecret('admin1234');
+    const { salt: passwordSalt, hash: passwordHash } = hashSecret('adminpassword123');
 
     const initialData: StoreData = {
       products: defaultProducts,
@@ -422,50 +389,31 @@ class StoreManager {
         passwordSalt,
         passwordHash,
         isInitialSetup: true
-      }
+      },
+      images: {}
     };
 
     this.saveDataDirect(initialData);
     return initialData;
   }
 
-  private saveDataDirect(data: StoreData) {
-    let saved = false;
-    // 1. Try writing directly to repository data file (works in local dev, AI Studio, and writable environments)
+  private saveDataDirect(data: StoreData): void {
+    const { preferredDir, preferredFile } = this.getDataPaths();
     try {
-      if (!fs.existsSync(REPO_DATA_DIR)) {
-        fs.mkdirSync(REPO_DATA_DIR, { recursive: true });
+      if (!fs.existsSync(preferredDir)) {
+        fs.mkdirSync(preferredDir, { recursive: true });
       }
-      const tempFile = `${REPO_DATA_FILE}.tmp.${Date.now()}`;
-      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-      fs.renameSync(tempFile, REPO_DATA_FILE);
-      saved = true;
-    } catch {
-      // Read-only filesystem in serverless environments (e.g. AWS Lambda /var/task)
-    }
-
-    // 2. Also write to TMP_DATA_FILE for serverless environments
-    try {
-      if (!fs.existsSync(TMP_DATA_DIR)) {
-        fs.mkdirSync(TMP_DATA_DIR, { recursive: true });
-      }
-      const tempFile = `${TMP_DATA_FILE}.tmp.${Date.now()}`;
-      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-      fs.renameSync(tempFile, TMP_DATA_FILE);
-      saved = true;
-    } catch (err) {
-      if (!saved) {
-        console.warn('Could not persist store data to disk (running in-memory):', err);
-      }
+      fs.writeFileSync(preferredFile, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (e) {
+      // In serverless, writing to tmp may fail if read only
     }
   }
 
-  private persist() {
+  public persist(): void {
     this.saveDataDirect(this.data);
   }
 
-  // Auth operations
-  public getAuth() {
+  public getAuth(): AdminAuth {
     return this.data.auth;
   }
 
@@ -492,7 +440,6 @@ class StoreManager {
     this.persist();
   }
 
-  // Settings
   public getSettings(): SiteSettings {
     return this.data.settings;
   }
@@ -503,25 +450,20 @@ class StoreManager {
     return this.data.settings;
   }
 
-  // Products
   public getProducts(department?: string, category?: string, subcategory?: string, search?: string, activeOnly: boolean = false): Product[] {
     let list = this.data.products;
     if (activeOnly) {
       list = list.filter(p => p.isActive);
     }
-    // Strict department filtering ('men' or 'women')
     if (department && department !== 'all') {
       list = list.filter(p => p.department === department);
     }
-    // Category filtering
     if (category && category !== 'all') {
       list = list.filter(p => p.category.toLowerCase() === category.toLowerCase());
     }
-    // Subcategory filtering (e.g. "Men's Shoes", "Women's Shoes")
     if (subcategory && subcategory !== 'all') {
       list = list.filter(p => p.subcategory?.toLowerCase() === subcategory.toLowerCase());
     }
-    // Search query
     if (search && search.trim()) {
       const q = search.toLowerCase().trim();
       list = list.filter(p =>
@@ -584,7 +526,6 @@ class StoreManager {
     return false;
   }
 
-  // Dashboard Stats
   public getStats(): AdminStats {
     const totalProducts = this.data.products.length;
     const menProductsCount = this.data.products.filter(p => p.department === 'men').length;
@@ -603,7 +544,6 @@ class StoreManager {
     };
   }
 
-  // Persistent Image Storage
   public saveImage(id: string, mimeType: string, base64Data: string): string {
     if (!this.data.images) {
       this.data.images = {};
